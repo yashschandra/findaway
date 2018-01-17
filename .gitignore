@@ -4,3 +4,4 @@ node_modules/
 sourcegraph.com/
 static/
 src
+.vscode/
