@@ -1,0 +1,35 @@
+package main
+
+import (
+	"net/http"
+	"log"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+	"fmt"
+)
+
+func index() func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request){
+		http.ServeFile(w, r, "templates/index.html")
+	}	
+}
+
+func main() {
+	db, err := sql.Open("mysql", "root:rahul@tcp(127.0.0.1:3306)/findaway")
+	if err == nil {
+		defer db.Close()
+		http.HandleFunc("/", index())
+		http.HandleFunc("/auth/signin", signin(db))
+		http.HandleFunc("/auth/signup", signup(db))
+		http.HandleFunc("/places/add", addPlace(db))
+		http.HandleFunc("/routes/add", addRoute(db))
+		http.HandleFunc("/modes/add", addMode(db))
+		http.HandleFunc("/modes/get", getModes(db))
+		http.HandleFunc("/createtables", createTables(db))
+		http.HandleFunc("/droptables", dropTables(db))
+		http.HandleFunc("/indexdata", indexPlaces(db))
+		log.Fatal(http.ListenAndServe(":9001", nil))
+	} else {
+		fmt.Println("error starting db : " + err.Error())
+	}
+}

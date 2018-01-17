@@ -1,0 +1,38 @@
+package main
+
+import (
+	"net/http"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+	"fmt"
+	"encoding/json"
+	"strconv"
+	"bytes"
+)
+
+func indexPlaces(db *sql.DB) func (w http.ResponseWriter, r *http.Request) {
+	return func (w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			type Place struct {
+				Id int64
+				Name string
+			}
+			query := "select id,name from PLACE;"
+			rows, err := db.Query(query)
+			if err == nil {
+				for rows.Next() {
+					var place Place
+					err = rows.Scan(&place.Id, &place.Name)
+					if err == nil {
+						data, err := json.Marshal(place)
+						if err == nil {
+							url := "http://localhost:9200/findaway/places/" + strconv.Itoa(int(place.Id))
+							response, err := http.Post(url, "application/json", bytes.NewBuffer(data))
+							fmt.Println(response.Body)
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,17 @@
+import React from 'react';
+import {Route, IndexRoute, IndexRedirect} from 'react-router';
+import Layout from './Layout.jsx';
+import AuthPage from './AuthPage.jsx';
+import SearchPage from './SearchPage.jsx';
+import AddwayPage from './AddwayPage.jsx';
+
+const routes=(
+	<Route path="/" component={Layout}>
+		<IndexRedirect to="/search" />
+		<Route path="/search" component={SearchPage} />
+		<Route path="/auth" component={AuthPage} />
+		<Route path="/addway" component={AddwayPage} />
+	</Route>
+);
+
+export default routes;

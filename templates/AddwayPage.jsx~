@@ -1,0 +1,108 @@
+import React from 'react';
+import axios from 'axios';
+
+class AddwayPage extends React.Component{
+	constructor(props){
+		super(props);
+		this.state={
+			fromPlace: 0,
+			toPlace: 0,
+			modeOptions: [],
+			searchResults: []
+		}
+		this.addPlace=this.addPlace.bind(this);
+		this.addPlaceFrom=this.addPlaceFrom.bind(this);
+		this.addPlaceTo=this.addPlaceTo.bind(this);
+		this.addRoute=this.addRoute.bind(this);
+	}
+	componentDidMount(){
+		var self=this;
+		axios.post('/modes/get', {}).then(function(response){
+			if(response.data.status==="OK"){
+				self.setState({modeOptions: response.data.modes});
+			}
+		});
+	}
+	addPlaceFrom(){
+		var place=this.refs.from.value.trim();
+		var self=this;
+		this.addPlace(place, function(response){
+			self.setState({fromPlace: response.id});
+		});
+	}
+	addPlaceTo(){
+		var place=this.refs.to.value.trim();
+		var self=this;
+		this.addPlace(place, function(response){
+			self.setState({toPlace: response.id});
+		});
+	}
+	addPlace(placeName, callback){
+		axios.post('/places/add', {placeName: placeName, userId: localStorage.getItem("userId")}).then(function(response){
+			console.log(response.data);
+			callback(response.data);
+		});
+	}
+	querySearch(){
+		var self=this;
+		if(this.refs.search.value.trim().length>0){
+			axios.post('/song/searchdata/', {search: this.refs.search.value.trim()}).then(function(response){
+				if(response.data.status==='OK'){
+					console.log(response.data.data);
+					if(response.data.data.length>0){
+						self.setState({songId: response.data.data[0].songId});
+						self.setState({searchResults: response.data.data});
+					}
+				}
+			});
+		}
+		else{
+			self.setState({searchResults: []});
+		}
+	}
+	handleSearch(e){
+		this.setState({searchResults: []});
+		window.clearTimeout(this.state.query);
+		this.setState({query: window.setTimeout(this.querySearch,1000)});
+	}
+	componentWillUnmount(){
+		window.clearTimeout(this.state.query);	
+	}
+	addRoute(){
+		var from=this.state.fromPlace;
+		var to=this.state.toPlace;
+		var distance=this.refs.distance.value.trim();
+		var mode=this.refs.mode.value;
+		var cost=this.refs.cost.value.trim();
+		axios.post('/routes/add', {fromPlace: from, toPlace: to, distance: distance, userId: localStorage.getItem("userId"), cost: cost, mode: mode}).then(function(response){
+			console.log(response);
+		});
+	}
+	render(){
+		return(
+			<div>
+				<input type="text" ref="from" onChange={this.handleSearch} /><button type="button" onClick={this.addPlaceFrom}>Add place</button>
+				<input type="text" ref="to" /><button type="button" onClick={this.addPlaceTo}>Add place</button>
+				<input type="number" ref="distance" />
+				<select ref="mode">
+					{this.state.modeOptions.map((modeOption, i)=><ModeOption key={i} data={modeOption} />)}
+				</select>
+				<input type="number" ref="cost" />
+				<button type="button" onClick={this.addRoute}>Add Route</button>
+			</div>
+		);
+	}
+}
+
+class ModeOption extends React.Component{
+	constructor(props){
+		super(props);
+	}
+	render(){
+		return(
+			<option value={this.props.data.Id}>{this.props.data.Name}</option>
+		);
+	}
+}
+
+export default AddwayPage;

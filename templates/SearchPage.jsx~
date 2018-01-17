@@ -1,0 +1,43 @@
+import React from 'react';
+import {Link} from 'react-router';
+import {browserHistory} from 'react-router';
+
+class SearchPage extends React.Component{
+	constructor(props){
+		super(props);
+		this.state={
+			loggedIn: false
+		}
+	}
+	componentWillMount(){
+		if(localStorage.getItem("verified")!==undefined && localStorage.getItem("verified")==="1"){
+			this.setState({loggedIn: true});
+		}
+		else{
+			localStorage.setItem("verified","0");
+		}
+	}
+	render(){
+		return(
+			<div>
+				{ this.state.loggedIn?null: <AuthHead /> }
+				Search
+			</div>
+		);
+	}
+}
+
+class AuthHead extends React.Component{
+	constructor(props){
+		super(props);
+	}
+	render(){
+		return(
+			<div>
+				<Link to="/auth">Auth</Link>
+			</div>
+		);
+	}
+}
+
+export default SearchPage;

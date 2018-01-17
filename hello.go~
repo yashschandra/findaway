@@ -1,0 +1,300 @@
+package main
+
+import (
+	"net/http"
+	"log"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+	"fmt"
+	"encoding/json"
+	"errors"
+	"strconv"
+)
+
+func index() func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request){
+		http.ServeFile(w, r, "templates/index.html")
+	}	
+}
+
+func signin(db *sql.DB) func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request){
+		if r.Method == "POST"{
+			type Body struct {
+				Username string
+				Password string
+			}
+			var response map[string] string
+			response = make(map[string] string)
+			body := Body{}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			checkError(err)
+			defer r.Body.Close()
+			user, userId, err := authenticateUser(db, body.Username, body.Password)
+			if err != nil {
+				response["status"] = "Not OK"
+				response["error"] = err.Error()
+			} else {
+				response["status"] = "OK"
+				response["user"] = user
+				response["id"] = userId
+			}
+			json.NewEncoder(w).Encode(response)
+		}
+	}
+}
+
+func signup(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			type Body struct {
+				Username string
+				Password string
+				Email string
+			}
+			var response map[string] string
+			response = make(map[string] string)
+			body := Body{}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			defer r.Body.Close()
+			user, userId, err := addUser(db, body.Username, body.Password, body.Email)
+			if err != nil {
+				response["status"] = "Not OK"
+				response["error"] = err.Error()
+			} else {
+				response["status"] = "OK"
+				response["user"] = user
+				response["id"] = userId
+			}
+			json.NewEncoder(w).Encode(response)
+		}
+	}
+}
+
+func addPlace(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			type Body struct {
+				UserId string
+				PlaceName string 
+			}
+			var response map[string] string
+			response = make(map[string] string)
+			body := Body{}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			fmt.Println(body)
+			defer r.Body.Close()
+			place, placeId, err := addNewPlace(db, body.PlaceName, body.UserId)
+			if err != nil {
+				response["status"] = "Not OK"
+				response["error"] = err.Error()
+			} else {
+				response["status"] = "OK"
+				response["place"] = place
+				response["id"] = placeId
+			}
+			json.NewEncoder(w).Encode(response)
+		}
+	}
+}
+
+func addNewPlace(db *sql.DB, placeName string, userId string) (string, string, error) {
+	var place string
+	query := "select name from PLACE where name='" + placeName + "';"
+	err := db.QueryRow(query).Scan(&place)
+	switch {
+		case err == sql.ErrNoRows:
+			query = "insert into PLACE set name='" + placeName + "',addedByUser=" + userId + ";"
+			res, err := db.Exec(query)
+			if err == nil {
+				placeId, _ := res.LastInsertId()
+				return placeName, strconv.Itoa(int(placeId)), nil
+			} else {
+				return "", "0", err
+			}
+		default:
+			err = errors.New("Place already exist or user does not exist")
+			return "", "0", err
+	}
+}
+
+func addRoute(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			type Body struct {
+				FromPlace string
+				ToPlace string
+				UserId string
+				Distance string
+			}
+			var response map[string] string
+			response = make(map[string] string)
+			body := Body{}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			fmt.Println(body)
+			defer r.Body.Close()
+			routeId, err := addNewRoute(db, body.FromPlace, body.ToPlace, body.Distance, body.UserId)
+			if err != nil {
+				response["status"] = "Not OK"
+				response["error"] = err.Error()
+			} else {
+				response["status"] = "OK"
+				response["id"] = routeId
+			}
+			json.NewEncoder(w).Encode(response)
+		}
+	}
+}
+
+func addNewRoute(db *sql.DB, fromPlace string, toPlace string, distance string, userId string) (string, error) {
+	var routeId int64
+	query :=  "select id from ROUTE where fromPlace=" + fromPlace + " and toPlace=" + toPlace + ";"
+	err := db.QueryRow(query).Scan(&routeId)
+	switch {
+		case err == sql.ErrNoRows:
+			query = "insert into ROUTE set fromPlace=" + fromPlace + ",toPlace=" + toPlace +",addedByUser=" + userId + ",distance=" + distance + ";"
+			res, err := db.Exec(query)
+			if err == nil {
+				routeId, _ := res.LastInsertId()
+				return strconv.Itoa(int(routeId)), nil
+			} else {
+				return "0", err
+			}
+		default:
+			err = errors.New("Route already exist")
+			return "0", err
+	}
+}
+
+func addWay(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			
+		}
+	}
+}
+
+func addUser(db *sql.DB, username string, password string, email string) (string, string, error) {
+	var user string
+	query := "select username from USER where username='" + username + "' or email='" + email + "';"
+	fmt.Println(query)
+	err := db.QueryRow(query).Scan(&user)
+	switch {
+		case err == sql.ErrNoRows:
+			query = "insert into USER set username='" + username + "',email='" + email + "',password='" + password + "';"
+			res, err := db.Exec(query)
+			if err == nil {
+				userId, _ := res.LastInsertId()
+				return username, strconv.Itoa(int(userId)), nil
+			} else {
+				return "", "0", err
+			}
+		default:
+			err = errors.New("User or email already exist")
+			return "", "0", err
+	}
+			
+}
+
+func authenticateUser(db *sql.DB, username string, password string) (string, string, error) {
+	var user string
+	var userId int64
+	query := "select username,id from USER where username='" + username + "' and password='" + password + "';"
+	fmt.Println(query)
+	err := db.QueryRow(query).Scan(&user, &userId)
+	checkError(err)
+	if err != nil {
+		return "", "0", err
+	} else {
+		return user, strconv.Itoa(int(userId)), nil
+	}
+}
+
+func executeDBQuery(db *sql.DB, query string) error {
+	fmt.Println(query)
+	stmt, err := db.Prepare(query)
+	_, err = stmt.Exec()
+	checkError(err)
+	return err
+}
+
+func createTable(db *sql.DB, tableName string, fields string) {
+	query := "create table " + tableName + " (" + fields + ");"
+	err := executeDBQuery(db, query)
+	checkError(err)
+}
+
+func dropTable(db *sql.DB, tableName string){
+	query := "drop table " + tableName + ";"
+	err := executeDBQuery(db, query)
+	checkError(err)
+}
+
+func createUserTable(db *sql.DB) {
+	tableName := "USER"
+	fields := "id int AUTO_INCREMENT PRIMARY KEY, email varchar(30) NOT NULL UNIQUE, username varchar(30) NOT NULL UNIQUE, password varchar(30) NOT NULL"
+	createTable(db, tableName, fields)
+}
+
+func createPlaceTable(db *sql.DB){
+	tableName := "PLACE"
+	fields := "id int AUTO_INCREMENT PRIMARY KEY, name varchar(30) NOT NULL, addedByUser int NOT NULL, FOREIGN KEY (addedByUser) REFERENCES USER(id)"
+	createTable(db, tableName, fields)
+}
+
+func createModeTable(db *sql.DB){
+	tableName := "MODE"
+	fields := "id int AUTO_INCREMENT PRIMARY KEY, name varchar(30) NOT NULL"
+	createTable(db, tableName, fields)
+}
+
+func createRouteTable(db *sql.DB){
+	tableName := "ROUTE"
+	fields := "id int AUTO_INCREMENT PRIMARY KEY, addedbyUser int NOT NULL, fromPlace int NOT NULL, toPlace int NOT NULL, distance int NOT NULL, FOREIGN KEY (addedByUser) REFERENCES USER(id), FOREIGN KEY (fromPlace) REFERENCES PLACE(id), FOREIGN KEY (toPlace) REFERENCES PLACE(id)"
+	createTable(db, tableName, fields)
+}
+
+func createWayTable(db *sql.DB){
+	tableName := "WAY"
+	fields := "id int AUTO_INCREMENT PRIMARY KEY, route int NOT NULL, addedByUser int NOT NULL, cost int NOT NULL, mode int NOT NULL, FOREIGN KEY (route) REFERENCES ROUTE(id), FOREIGN KEY (addedByUser) REFERENCES USER(id), FOREIGN KEY (mode) REFERENCES MODE(id)"
+	createTable(db, tableName, fields)
+}
+
+func createTables(db *sql.DB) func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request){
+		createUserTable(db)
+		createPlaceTable(db)
+		createModeTable(db)
+		createRouteTable(db)
+		createWayTable(db)
+	}
+}
+
+func dropTables(db *sql.DB) func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request){
+		tableNames := [...]string{"WAY", "MODE", "ROUTE", "PLACE", "USER"}
+		for i := 0; i<len(tableNames); i++ {
+			dropTable(db, tableNames[i])
+		}
+	}
+}
+
+func checkError(err error) {
+	if err != nil{
+		fmt.Println(err.Error())
+	}
+}
+
+func main() {
+	db, err := sql.Open("mysql", "root:rahul@tcp(127.0.0.1:3306)/findaway")
+	checkError(err)
+	defer db.Close()
+	http.HandleFunc("/", index())
+	http.HandleFunc("/auth/signin", signin(db))
+	http.HandleFunc("/auth/signup", signup(db))
+	http.HandleFunc("/places/add", addPlace(db))
+	http.HandleFunc("/routes/add", addRoute(db))
+	http.HandleFunc("/createtables", createTables(db))
+	http.HandleFunc("/droptables", dropTables(db))
+	log.Fatal(http.ListenAndServe(":9001", nil))
+}

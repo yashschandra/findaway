@@ -1,0 +1,28 @@
+import React from 'react';
+import {browserHistory} from 'react-router';
+
+class AuthPage extends React.Component{
+	constructor(props){
+		super(props);
+	}
+	componentWillMount(){
+		if(localStorage.getItem("verified")===undefined || localStorage.getItem("verified")!=="1"){
+			browserHistory.replace("/auth");
+		}
+	}
+	logoutUser(){
+		localStorage.setItem("verified","0");
+		localStorage.setItem("user",null);
+		browserHistory.replace("/auth");
+	}
+	render(){
+		return (
+			<div>
+				Home <button type="button" onClick={this.logoutUser}>Logout</button>
+				{this.props.children}
+			</div>
+		);
+	}
+}
+
+export default AuthPage;

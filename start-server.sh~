@@ -1,0 +1,7 @@
+#!/bin/bash
+
+declare -a GO_FILES=("main" "places" "tables" "modes" "routes" "auth")
+
+ARGS=$(printf '%s.go ' "${GO_FILES[@]}")
+echo "$ARGS"
+#go run "$ARGS"
